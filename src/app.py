@@ -18,10 +18,19 @@ import exifutil
 import caffe
 
 REPO_DIRNAME = os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + '/..')
-UPLOAD_FOLDER = '/tmp/uploads'
+UPLOAD_FOLDER = '/tmp/caffe_demos_uploads'
 ALLOWED_IMAGE_EXTENSIONS = set(['png', 'bmp', 'jpg', 'jpe', 'jpeg', 'gif'])
 
+# Obtain the flask app object
+app = flask.Flask(__name__)
 
+
+@app.route('/')
+def index():
+    return flask.render_template('index.html', has_result=False)
+
+
+@app.route('/classify_url', methods=['GET'])
 def classify_url():
     imageurl = flask.request.args.get('imageurl', '')
     try:
@@ -40,10 +49,22 @@ def classify_url():
 
     logging.info('Image: %s', imageurl)
     result = app.clf.classify_image(image)
+    is_snake = False
+    for single_pred in result[1]:
+        if "snake" in single_pred[0]:
+            is_snake = True
+            break
+
+    for single_pred in result[2]:
+        if "snake" in single_pred[0]:
+            is_snake = True
+            break
+
     return flask.render_template(
-        'index.html', has_result=True, result=result, imagesrc=imageurl)
+        'index.html', has_result=True, result=result, imagesrc=imageurl, is_snake=is_snake)
 
 
+@app.route('/classify_upload', methods=['POST'])
 def classify_upload():
     try:
         # We will save the file to disk for possible data collection.
@@ -63,10 +84,31 @@ def classify_upload():
         )
 
     result = app.clf.classify_image(image)
+    is_snake = False
+    for single_pred in result[1]:
+        if "snake" in single_pred[0]:
+            is_snake = True
+            break
+
+    for single_pred in result[2]:
+        if "snake" in single_pred[0]:
+            is_snake = True
+            break
+    
     return flask.render_template(
         'index.html', has_result=True, result=result,
-        imagesrc=embed_image_html(image)
+        imagesrc=embed_image_html(image), is_snake=is_snake
     )
+
+
+def embed_image_html(image):
+    """Creates an image embedded in HTML base64 format."""
+    image_pil = Image.fromarray((255 * image).astype('uint8'))
+    image_pil = image_pil.resize((256, 256))
+    string_buf = StringIO.StringIO()
+    image_pil.save(string_buf, format='png')
+    data = string_buf.getvalue().encode('base64').replace('\n', '')
+    return 'data:image/png;base64,' + data
 
 
 def allowed_file(filename):
@@ -159,6 +201,14 @@ class ImagenetClassifier(object):
             logging.info('Classification error: %s', err)
             return (False, 'Something went wrong when classifying the '
                            'image. Maybe try another one?')
+
+
+def start_tornado(app, port=5000):
+    http_server = tornado.httpserver.HTTPServer(
+        tornado.wsgi.WSGIContainer(app))
+    http_server.listen(port)
+    print("Tornado server starting on port {}".format(port))
+    tornado.ioloop.IOLoop.instance().start()
 
 
 def start_from_terminal(app):
