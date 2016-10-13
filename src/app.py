@@ -24,6 +24,38 @@ ALLOWED_IMAGE_EXTENSIONS = set(['png', 'bmp', 'jpg', 'jpe', 'jpeg', 'gif'])
 # Obtain the flask app object
 app = flask.Flask(__name__)
 
+def check_snake(result):
+    types = ["viper", "cobra", "krait", "pitviper", "python", "anaconda", "boa", "titanoboa", "rattlesnake"]
+    snake_type = ""
+    is_snake = False
+    for pred in result[1]:
+        for type in types:
+            if pred[0].find(type) != -1:
+                snake_type = type
+                is_snake = True
+                break
+        if pred[0].find("snake") != -1:
+            is_snake = True    
+        if snake_type != "":
+            break
+
+    if snake_type == "":
+        for pred in result[1]:
+            for type in types:
+                if pred[0].find(type) != -1:
+                    snake_type = type
+                    is_snake = True
+                    break
+            if pred[0].find("snake") != -1:
+                is_snake = True    
+            if snake_type != "":
+                break
+    
+    if is_snake and snake_type == "":
+        snake_type = "snake"
+
+    return snake_type    
+
 
 @app.route('/')
 def index():
@@ -49,19 +81,11 @@ def classify_url():
 
     logging.info('Image: %s', imageurl)
     result = app.clf.classify_image(image)
-    is_snake = False
-    for single_pred in result[1]:
-        if "snake" in single_pred[0]:
-            is_snake = True
-            break
-
-    for single_pred in result[2]:
-        if "snake" in single_pred[0]:
-            is_snake = True
-            break
+    
+    snake_type = check_snake(result)
 
     return flask.render_template(
-        'index.html', has_result=True, result=result, imagesrc=imageurl, is_snake=is_snake)
+        'index.html', has_result=True, result=result, imagesrc=imageurl, snake_type=snake_type)
 
 
 @app.route('/classify_upload', methods=['POST'])
@@ -84,20 +108,12 @@ def classify_upload():
         )
 
     result = app.clf.classify_image(image)
-    is_snake = False
-    for single_pred in result[1]:
-        if "snake" in single_pred[0]:
-            is_snake = True
-            break
 
-    for single_pred in result[2]:
-        if "snake" in single_pred[0]:
-            is_snake = True
-            break
-    
+    snake_type = check_snake(result)
+
     return flask.render_template(
         'index.html', has_result=True, result=result,
-        imagesrc=embed_image_html(image), is_snake=is_snake
+        imagesrc=embed_image_html(image), snake_type=snake_type
     )
 
 

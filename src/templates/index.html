@@ -64,8 +64,8 @@
       <div class="media">
         <a class="pull-left" href="#"><img class="media-object" width="192" height="192" src={{ imagesrc }}></a>
         <div class="media-body">
-          {% if is_snake %}
-          <p> A snake </p>
+          {% if snake_type %}
+          <p> A {{ snake_type }} </p>
           {% else %}
           <p> Not a snake </p>
           {% endif %}
